@@ -1,3 +1,7 @@
+# Project specific files
+tools-and-infra-config.yaml
+.idea/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
