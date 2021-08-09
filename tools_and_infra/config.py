@@ -1,5 +1,6 @@
 import os
-from typing import List
+import typing
+from typing import List, Any
 import logging
 import yaml
 
@@ -18,6 +19,24 @@ def specifiable_properties():
 
 class ConfigException(Exception):
     pass
+
+
+class ConfigValue:
+    def __init__(self, value: Any):
+        self.value = value
+
+    def is_empty(self):
+        return not self.value
+
+    def unwrap(self):
+        if not self.value:
+            raise ConfigException("Unable to unwrap with no value provided.")
+        return self.value
+
+    def map(self, func: typing.Callable) -> Any:
+        if not self.value:
+            return None
+        return func(self.value)
 
 
 class _Config:
@@ -51,20 +70,18 @@ class _Config:
             else:
                 logging.warning("[" + key + "] not set in OS Env!")
 
-    def get_property(self, property_name: str) -> List:
+    def get_property(self, property_name: str, if_missing: Any = None) -> ConfigValue:
         if property_name not in specifiable_properties():
             logging.warning("Provided property: [" + property_name + "] not in specifiable properties.")
-            return []
+            return ConfigValue(if_missing)
         path = property_name.split(".")
         properties_accessor = self.__properties__
         for item in path:
             if item not in path:
                 logging.warning("Provided property: [" + property_name + "] not found in config.")
+                return ConfigValue(if_missing)
             properties_accessor = properties_accessor[item]
-        if type(properties_accessor) is list:
-            return properties_accessor
-        else:
-            return [properties_accessor]
+        return ConfigValue(properties_accessor)
 
 
 Config = _Config()

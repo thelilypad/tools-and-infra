@@ -12,6 +12,16 @@ REQUIRED_OHLCV_COLUMNS = [
 class UtilException(Exception):
     pass
 
+
+def remove_non_ohlcv_columns(df: pd.DataFrame) -> pd.DataFrame:
+    return df.drop(columns=[col for col in df.columns if col not in REQUIRED_OHLCV_COLUMNS])
+
+
+def rename_to_ohlcv(df: pd.DataFrame, *, volume_col: str, open_col: str, high_col: str, low_col: str, close_col: str):
+    return df.rename(
+        columns={volume_col: 'volume', open_col: 'open', high_col: 'high', low_col: 'low', close_col: 'close'})
+
+
 def resample_ohlcv_time_series(df: pd.DataFrame, interval: str, coerce_datetime_column: str) -> pd.DataFrame:
     if not set(REQUIRED_OHLCV_COLUMNS) <= set(df.columns):
         raise UtilException('Missing one or more required columns: ' + ','.join(REQUIRED_OHLCV_COLUMNS))
