@@ -1,12 +1,18 @@
 import abc
 from functools import wraps
-
 from tools_and_infra.config import Config, ConfigValue
-
+import urllib
 
 class LoaderException(Exception):
     pass
 
+def make_url(base_url , *res, **params):
+    url = base_url
+    for r in res:
+        url = '{}/{}'.format(url, r)
+    if params:
+        url = '{}?{}'.format(url, urllib.parse.urlencode(params))
+    return url
 
 class Loader(abc.ABC):
     def __init__(self):

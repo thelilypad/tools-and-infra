@@ -3,6 +3,8 @@ tools-and-infra-config.yaml
 .idea/
 cache/
 
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

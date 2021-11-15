@@ -1,4 +1,9 @@
 import pandas as pd
+from tools_and_infra.datetime import calendar
+from tqdm import tqdm
+from typing import List
+
+tqdm.pandas()
 
 REQUIRED_OHLCV_COLUMNS = [
     'open',
@@ -21,7 +26,6 @@ def rename_to_ohlcv(df: pd.DataFrame, *, volume_col: str, open_col: str, high_co
     return df.rename(
         columns={volume_col: 'volume', open_col: 'open', high_col: 'high', low_col: 'low', close_col: 'close'})
 
-
 def resample_ohlcv_time_series(df: pd.DataFrame, interval: str, coerce_datetime_column: str) -> pd.DataFrame:
     if not set(REQUIRED_OHLCV_COLUMNS) <= set(df.columns):
         raise UtilException('Missing one or more required columns: ' + ','.join(REQUIRED_OHLCV_COLUMNS))
@@ -33,3 +37,25 @@ def resample_ohlcv_time_series(df: pd.DataFrame, interval: str, coerce_datetime_
         df[coerce_datetime_column] = pd.to_datetime(df[coerce_datetime_column])
         df = df.set_index(coerce_datetime_column)
     return df.resample(interval).agg({'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'})
+
+def get_intraday_ohlcv(ohlcv: pd.DataFrame) -> pd.DataFrame:
+    def __intraday_check(x):
+        op, close = trading_dict[x.split(" ")[0]]
+        d = pd.to_datetime(x)
+        return d >= op and d <= close
+
+    df = ohlcv.copy()
+    df['date'] = df['time'].apply(lambda x: x.split(" ")[0])
+    df['hms'] = df['time'].apply(lambda x: x.split(" ")[1])
+    trading_days = df['date'].unique()
+    trading_dict = {}
+    for day in trading_days:
+        op, close = calendar.CalendarDate(pd.to_datetime(day)).get_trading_hours_for_date()
+        trading_dict[day] = (op.replace(tzinfo=None), close.replace(tzinfo=None))
+
+    df['is_intraday'] = df['time'].progress_apply(__intraday_check)
+    df = df[df['is_intraday'] == True]
+    del df['date']
+    del df['hms']
+    del df['is_intraday']
+    return df

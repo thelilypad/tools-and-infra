@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import datetime
+from datetime import timedelta
 from typing import List
 
 import pandas as pd
@@ -11,7 +11,7 @@ import exchange_calendars as tc
 
 
 STANDARD_MM_DD_YYYY = '%B %d, %Y'
-DEFAULT_TRADING_CALENDAR = 'XYNS'
+DEFAULT_TRADING_CALENDAR = 'XNYS'
 DEFAULT_EXCHANGE_CALENDAR = tc.get_calendar(DEFAULT_TRADING_CALENDAR)
 
 
@@ -44,7 +44,10 @@ class CalendarDate:
         else:
             self.calendar: tc.exchange_calendar.ExchangeCalendar = tc.get_calendar(exchange)
         self._exchange = exchange
-        self.date: pd.Timestamp = self.calendar.session_open(date)
+        if self.calendar.is_session(date):
+            self.date: pd.Timestamp = self.calendar.session_open(date)
+        else:
+            self.date: pd.Timestamp = date
 
     def get_week_of_month(self) -> int:
         """Get week of month
@@ -72,6 +75,10 @@ class CalendarDate:
         """
 
         return tc.get_calendar_names()
+
+    def get_trading_hours_for_date(self, timezone: str = 'America/New_York') -> (pd.Timestamp, pd.Timestamp):
+        next_day = pd.to_datetime(self.date.date() + timedelta(days=1))
+        return self.calendar.previous_open(next_day).tz_convert(tz=timezone), self.calendar.previous_close(next_day).tz_convert(tz=timezone)
 
     def get_trading_days_between(self, end: CalendarDate) -> pd.DatetimeIndex:
         """Get the trading days between 'CalendarDates'
@@ -120,7 +127,8 @@ class CalendarDate:
 
         return self.date.isoweekday()
 
-    def is_trading_day(self) -> bool:
+    @classmethod
+    def is_trading_day(cls, date: pd.Timestamp, exchange: str = DEFAULT_TRADING_CALENDAR) -> bool:
         """Checks if current 'self.date' is a trading day of 'self._exchange'
 
         Returns
@@ -128,8 +136,8 @@ class CalendarDate:
         bool
             True if valid trading day, else False
         """
-
-        return self.calendar.is_session(self.date)
+        cal = tc.get_calendar(exchange)
+        return cal.is_session(date)
 
     def get_next_trading_day(self) -> CalendarDate:
         """Gets the next valid trading day
